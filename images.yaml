@@ -28,4 +28,4 @@ images:
     platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
 
   - source: docker.io/library/golang
-    tags: ["1.26-alpine"]
+    tags: ["1.26"]
