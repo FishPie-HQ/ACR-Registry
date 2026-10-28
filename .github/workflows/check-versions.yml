@@ -1,0 +1,34 @@
+name: check-versions
+
+# 手动触发：列出 images.yaml 中每个镜像最新的 5 个 x.y.z 版本 tag，结果见 run 的 Summary 页
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: List latest pinned tags
+        run: |
+          for src in $(yq -r '.images[].source' images.yaml | sort -u); do
+            {
+              echo "### $src"
+              skopeo list-tags --retry-times 3 "docker://$src" \
+                | jq -r '.Tags[]' \
+                | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+                | sort -V | tail -n 5 \
+                | sed 's/^/- /'
+              echo
+            } >> "$GITHUB_STEP_SUMMARY"
+          done

@@ -1,0 +1,28 @@
+# 镜像同步清单
+# - source 必须写完整路径（含注册表主机名），如 docker.io/library/nginx
+# - tags 只允许固定版本（必须包含 x.y.z），latest / stable / 1.31 这类浮动 tag 会被拒绝
+# - 目标仓库名按规则 B 生成：
+#     docker.io/library/nginx        -> fishpie/library_nginx
+#     ghcr.io/foo/bar                -> fishpie/ghcr-io_foo_bar
+#
+# 可选字段：
+#   platforms:      覆盖默认平台，如 [linux/amd64, linux/arm64] 或 [linux/arm/v7]
+#   target:         覆盖规则 B 生成的仓库名（规则 C）
+#   allow_unpinned: true   放行不含 x.y.z 但确实固定的 tag（如日期版本）
+
+defaults:
+  platforms: [linux/amd64]
+
+images:
+  - source: docker.io/library/nginx
+    tags: ["1.31.3"]            # mainline；需要 stable 可追加 "1.30.4"
+
+  - source: docker.io/victoriametrics/victoria-logs
+    tags: ["v1.52.0"]
+
+  - source: docker.io/victoriametrics/vlagent
+    tags: ["v1.52.0"]
+
+  - source: docker.io/victoriametrics/vlogscli
+    tags: ["v1.52.0"]
+    platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
