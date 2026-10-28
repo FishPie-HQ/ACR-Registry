@@ -27,5 +27,5 @@ images:
     tags: ["v1.52.0"]
     platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
 
-  - source: docker.io/library/sqlrest
-    tags: ["1.0.0"]
+  - source: docker.io/library/golang
+    tags: ["1.26-alpine"]
