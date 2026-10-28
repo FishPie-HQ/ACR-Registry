@@ -14,18 +14,18 @@ defaults:
   platforms: [linux/amd64]
 
 images:
-  - source: docker.io/library/nginx
-    tags: ["1.31.3"]            # mainline；需要 stable 可追加 "1.30.4"
-
-  - source: docker.io/victoriametrics/victoria-logs
-    tags: ["v1.52.0"]
-
-  - source: docker.io/victoriametrics/vlagent
-    tags: ["v1.52.0"]
-
-  - source: docker.io/victoriametrics/vlogscli
-    tags: ["v1.52.0"]
-    platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
+#  - source: docker.io/library/nginx
+#    tags: ["1.31.3"]            # mainline；需要 stable 可追加 "1.30.4"
+#
+#  - source: docker.io/victoriametrics/victoria-logs
+#    tags: ["v1.52.0"]
+#
+#  - source: docker.io/victoriametrics/vlagent
+#    tags: ["v1.52.0"]
+#
+#  - source: docker.io/victoriametrics/vlogscli
+#    tags: ["v1.52.0"]
+#    platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
 
   - source: docker.io/library/golang
     tags: ["1.26"]
