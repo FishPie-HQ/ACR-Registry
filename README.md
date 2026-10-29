@@ -18,7 +18,7 @@ flowchart LR
 ## 特性
 
 - **白名单同步**：只同步 `images.yaml` 中列出的镜像
-- **只同步固定版本**：`latest`、`stable`、`1.31` 这类浮动 tag 会被拒绝
+- **tag 任意填写**：`1.31.3`、`1.26-alpine`、`latest` 均可；上游不存在时提示「未找到」并列出相近 tag
 - **按平台同步**：默认 `linux/amd64`，可为单个镜像加上 `linux/arm64` 等
 - **digest 比对跳过**：目标中各平台 digest 与上游一致时不重复推送
 - **单平台无损复制**：目标 digest 与上游完全一致
@@ -67,7 +67,10 @@ defaults:
 
 images:
   - source: docker.io/library/nginx          # 必须写完整路径
-    tags: ["1.31.3"]                          # 只允许固定版本（含 x.y.z）
+    tags: ["1.31.3"]
+
+  - source: docker.io/library/golang
+    tags: ["1.26-alpine"]                     # 浮动 tag：上游更新后定时任务会重新同步
 
   - source: docker.io/victoriametrics/vlogscli
     tags: ["v1.52.0"]
@@ -76,19 +79,14 @@ images:
   - source: ghcr.io/foo/some-very-long-name
     tags: ["1.0.0"]
     target: foo-short                         # 覆盖自动生成的仓库名
-
-  - source: docker.io/foo/bar
-    tags: ["20260101"]
-    allow_unpinned: true                      # 放行不含 x.y.z 的固定 tag
 ```
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | `source` | 是 | 含注册表主机名的完整路径 |
-| `tags` | 是 | 固定版本 tag 列表 |
+| `tags` | 是 | tag 列表，任意上游存在的 tag |
 | `platforms` | 否 | 覆盖 `defaults.platforms`，如 `linux/arm/v7` |
 | `target` | 否 | 自定义目标仓库名 |
-| `allow_unpinned` | 否 | 放行不含 `x.y.z` 的 tag，默认 `false` |
 
 ## 命名规则
 
@@ -119,7 +117,8 @@ docker pull registry.cn-hangzhou.aliyuncs.com/fishpie/library_nginx:1.31.3
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | `Login ACR` 报 `malformed HTTP Authorization header` | `ACR_REGISTRY` 未读到值，登录到了 docker.io | 在 **Variables** 页签补上变量 |
-| `不是固定版本 tag，已拒绝` | tag 不含 `x.y.z` | 换成固定版本，或设 `allow_unpinned: true` |
+| `xxx:tag 未找到，上游不存在该 tag` | tag 拼写错误或上游未发布 | 参考报错中列出的相近 tag，或运行 check-versions |
+| `上游仓库不存在或无权访问` | `source` 路径写错，或私有仓库未登录 | 检查 `source` |
 | `上游没有 linux/xxx 平台` | 上游未发布该架构 | 从 `platforms` 中移除 |
 | `推送后校验 digest 不一致` | 推送未完成或被 ACR 改写 | 重跑；多次出现请检查 ACR 配额 |
 | 定时任务不再运行 | 公开仓库 60 天无提交，GitHub 自动停用 | 在 Actions 页面重新启用 |

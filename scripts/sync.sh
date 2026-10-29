@@ -2,7 +2,7 @@
 # 按 images.yaml 把镜像同步到 ACR：
 #   - 只同步指定平台（默认 linux/amd64）
 #   - 目标中各平台 manifest digest 与上游一致则跳过
-#   - 拒绝浮动 tag
+#   - tag 可任意填写（含 latest、1.26-alpine 等浮动 tag），上游不存在时给出提示
 # 依赖：skopeo、yq (mikefarah v4)、jq、docker buildx（多平台时）
 # 认证：沿用 docker login 写入的 ~/.docker/config.json
 set -uo pipefail
@@ -10,8 +10,8 @@ set -uo pipefail
 CONFIG="${CONFIG:-images.yaml}"
 : "${ACR_REGISTRY:?ACR_REGISTRY 未设置}"
 : "${ACR_NAMESPACE:?ACR_NAMESPACE 未设置}"
-PIN_RE='[0-9]+\.[0-9]+\.[0-9]+'
 SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
+ERRF="$(mktemp)"; trap 'rm -f "$ERRF"' EXIT
 
 n_ok=0; n_skip=0; n_fail=0
 
@@ -27,11 +27,32 @@ target_name() {
   fi | tr '[:upper:]' '[:lower:]'
 }
 
+# 上游 tag 不存在时调用：区分仓库不存在和 tag 不存在，并列出相近的 tag 供参考
+report_missing() {
+  local src="$1" tag="$2" tags variant hint
+  if ! tags="$(skopeo list-tags --retry-times 3 "docker://$src" 2>/dev/null | jq -r '.Tags[]')"; then
+    err "$src: 上游仓库不存在或无权访问，请检查 source"
+    return
+  fi
+  # 1.26-alpine -> 只在含 -alpine 的 tag 中找；纯版本号则在全部 tag 中找
+  variant=""
+  [[ "$tag" == *-* ]] && variant="-${tag#*-}"
+  hint="$(grep -F -- "$variant" <<<"$tags" | sort -V | tail -n 10 | paste -sd ' ')"
+  err "$src:$tag 未找到，上游不存在该 tag${hint:+。相近的 tag：$hint}"
+}
+
 # 输出上游中所选平台的 manifest digest（排序去重），失败返回非 0
 src_digests() {
-  local ref="$1" plats="$2" raw single p os arch variant d
-  raw="$(skopeo inspect --raw --retry-times 3 "docker://$ref")" \
-    || { err "$ref: 读取上游 manifest 失败"; return 1; }
+  local src="$1" tag="$2" plats="$3" ref="$1:$2" raw single p os arch variant d errmsg
+  if ! raw="$(skopeo inspect --raw --retry-times 3 "docker://$ref" 2>"$ERRF")"; then
+    errmsg="$(<"$ERRF")"
+    if grep -qiE 'manifest unknown|not found|404' <<<"$errmsg"; then
+      report_missing "$src" "$tag"
+    else
+      err "$ref: 读取上游 manifest 失败：$errmsg"
+    fi
+    return 1
+  fi
 
   if jq -e 'has("manifests")' >/dev/null <<<"$raw"; then
     for p in ${plats//,/ }; do
@@ -67,20 +88,18 @@ dst_digests() {
 
 # 返回值：0 已同步，2 跳过，其他 失败
 sync_one() {
-  local src="$1" tag="$2" plats="$3" target="$4" allow="$5" name dst want have d
+  local src="$1" tag="$2" plats="$3" target="$4" name dst want have d
   local -a digests refs
 
   [[ "${src%%/*}" == *.* ]] \
     || { err "$src: 请写完整路径，如 docker.io/library/nginx"; return 1; }
-  [[ "$allow" == "true" || "$tag" =~ $PIN_RE ]] \
-    || { err "$src:$tag 不是固定版本 tag，已拒绝"; return 1; }
 
   name="${target:-$(target_name "$src")}"
   (( ${#name} <= 64 )) \
     || { err "$name 超过 64 个字符，请用 target 字段指定短名"; return 1; }
   dst="$ACR_REGISTRY/$ACR_NAMESPACE/$name:$tag"
 
-  want="$(src_digests "$src:$tag" "$plats")" || return 1
+  want="$(src_digests "$src" "$tag" "$plats")" || return 1
   have="$(dst_digests "$dst")"
   if [[ -n "$have" && "$have" == "$want" ]]; then
     echo "skip: $dst（digest 未变化）"
@@ -109,9 +128,9 @@ sync_one() {
   echo "|---|---|---|"
 } >> "$SUMMARY"
 
-while IFS='|' read -r -u 3 src tag plats target allow; do
+while IFS='|' read -r -u 3 src tag plats target; do
   echo "::group::$src:$tag -> [$plats]"
-  sync_one "$src" "$tag" "$plats" "$target" "$allow"; rc=$?
+  sync_one "$src" "$tag" "$plats" "$target"; rc=$?
   echo "::endgroup::"
   case $rc in
     0) n_ok=$((n_ok + 1));     r="已同步" ;;
@@ -126,8 +145,7 @@ done 3< <(
     | [ $img.source,
         .,
         (($img.platforms // $dp) | join(",")),
-        ($img.target // ""),
-        (($img.allow_unpinned // false) | tostring) ]
+        ($img.target // "") ]
     | join("|")'
 )
 
