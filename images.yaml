@@ -27,5 +27,17 @@ images:
 #    tags: ["v1.52.0"]
 #    platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
 
-  - source: docker.io/library/golang
-    tags: ["1.26-alpine"]
+  - source: registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper
+    tags: ["x86_64-14.4.2"]
+  - source: docker.io/library/alpine
+    tags: ["alpine:3.20"]
+  - source: docker.io/library/docker
+    tags: ["28-cli"]
+  - source: docker.io/library/maven
+    tags: ["3.9-eclipse-temurin-17"]
+  - source: docker.io/library/eclipse-temurin
+    tags: ["17-jre"]
+  - source: docker.io/library/node
+    tags: ["20-alpine"]
+  - source: docker.io/library/nginx
+    tags: ["1.27-alpine"]
