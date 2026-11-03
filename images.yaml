@@ -27,5 +27,5 @@ images:
 #    tags: ["v1.52.0"]
 #    platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
 
-  - source: docker.io/library/maven
-    tags: ["3.9-eclipse-temurin-21"]
+  - source: docker.io/nacos/nacos-server:v3.1.0
+    tags: ["v3.1.0"]
