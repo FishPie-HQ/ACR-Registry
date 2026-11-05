@@ -27,5 +27,6 @@ images:
 #    tags: ["v1.52.0"]
 #    platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
 
+
   - source: docker.io/gitlab/gitlab-ce
     tags: ["14.4.2-ce.0"]
