@@ -28,5 +28,5 @@ images:
 #    platforms: [linux/amd64, linux/arm64]   # 用来验证多架构同步路径
 
 
-  - source: docker.io/apache/zeppelin
-    tags: ["0.12.1"]
+  - source: docker.io/apache/seata-server
+    tags: ["2.6.0"]
